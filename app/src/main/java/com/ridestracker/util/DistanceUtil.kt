@@ -1,7 +1,7 @@
 package com.ridestracker.util
 
-import com.google.android.gms.maps.model.LatLng
 import com.ridestracker.domain.model.Coordinate
+import org.osmdroid.util.GeoPoint
 import kotlin.math.*
 
 object DistanceUtil {
@@ -33,7 +33,7 @@ object DistanceUtil {
         return Pair(gain, loss)
     }
 
-    fun toLatLng(coordinate: Coordinate) = LatLng(coordinate.lat, coordinate.lng)
+    fun toGeoPoint(coordinate: Coordinate) = GeoPoint(coordinate.lat, coordinate.lng)
 
     fun kmToMiles(km: Double): Double = km * 0.621371
 

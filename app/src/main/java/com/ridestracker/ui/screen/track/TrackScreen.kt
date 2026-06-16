@@ -14,29 +14,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapStyleOptions
-import com.google.maps.android.compose.*
+import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.RideStatus
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.ui.theme.*
 import com.ridestracker.util.DistanceUtil
 import com.ridestracker.util.FormatUtil
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
-@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun TrackScreen(
     onNavigateToSummary: (String) -> Unit,
     viewModel: TrackViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val rideState by viewModel.rideState.collectAsState()
     val savedRideId by viewModel.savedRideId.collectAsState()
     val weather by viewModel.weather.collectAsState()
@@ -46,9 +52,13 @@ fun TrackScreen(
         listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     )
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(14.5995, 120.9842), 13f)
-    }
+    // Keep a reference to the live polyline overlay so we can update it
+    val routePolyline = remember { Polyline().apply {
+        outlinePaint.color = 0xFFFF6B00.toInt()
+        outlinePaint.strokeWidth = 14f
+    }}
+
+    val mapViewRef = remember { mutableStateOf<MapView?>(null) }
 
     LaunchedEffect(savedRideId) {
         savedRideId?.let { id ->
@@ -57,11 +67,22 @@ fun TrackScreen(
         }
     }
 
+    // Update polyline and camera when new coordinates arrive
     LaunchedEffect(rideState.coordinates) {
-        rideState.coordinates.lastOrNull()?.let { coord ->
-            val pos = LatLng(coord.lat, coord.lng)
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 16f))
-            if (rideState.coordinates.size == 1) {
+        val coords = rideState.coordinates
+        val mapView = mapViewRef.value ?: return@LaunchedEffect
+
+        if (coords.size >= 2) {
+            routePolyline.setPoints(coords.map { GeoPoint(it.lat, it.lng) })
+            if (!mapView.overlays.contains(routePolyline)) {
+                mapView.overlays.add(routePolyline)
+            }
+            mapView.invalidate()
+        }
+
+        coords.lastOrNull()?.let { coord ->
+            mapView.controller.animateTo(GeoPoint(coord.lat, coord.lng))
+            if (coords.size == 1) {
                 viewModel.fetchWeather(coord.lat, coord.lng)
             }
         }
@@ -70,29 +91,31 @@ fun TrackScreen(
     if (showCrashAlert) {
         CrashAlertDialog(
             onDismiss = { viewModel.dismissCrashAlert() },
-            onSendSOS = { viewModel.dismissCrashAlert() /* TODO: send SMS */ }
+            onSendSOS = { viewModel.dismissCrashAlert() }
         )
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (locationPermissions.allPermissionsGranted) {
-            GoogleMap(
+            AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(
-                    isMyLocationEnabled = true,
-                    mapStyleOptions = MapStyleOptions(DARK_MAP_STYLE)
-                ),
-                uiSettings = MapUiSettings(zoomControlsEnabled = false)
-            ) {
-                if (rideState.coordinates.size >= 2) {
-                    Polyline(
-                        points = rideState.coordinates.map { DistanceUtil.toLatLng(it) },
-                        color = OrangeAccent,
-                        width = 12f
-                    )
-                }
-            }
+                factory = { ctx ->
+                    Configuration.getInstance().userAgentValue = ctx.packageName
+                    MapView(ctx).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(true)
+                        controller.setZoom(15.0)
+                        isTilesScaledToDpi = true
+
+                        val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
+                        locationOverlay.enableMyLocation()
+                        overlays.add(locationOverlay)
+
+                        mapViewRef.value = this
+                    }
+                },
+                update = { /* updates are handled by LaunchedEffect */ }
+            )
         } else {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -126,9 +149,7 @@ fun TrackScreen(
             RecordingIndicator(isPaused = rideState.status == RideStatus.PAUSED)
         }
 
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
             if (rideState.status != RideStatus.IDLE) {
                 StatsBottomSheet(
                     distanceKm = rideState.distanceKm,
@@ -143,8 +164,13 @@ fun TrackScreen(
             RideControls(
                 status = rideState.status,
                 onStart = {
-                    if (locationPermissions.allPermissionsGranted) viewModel.startRide()
-                    else locationPermissions.launchMultiplePermissionRequest()
+                    if (locationPermissions.allPermissionsGranted) {
+                        mapViewRef.value?.overlays?.remove(routePolyline)
+                        routePolyline.setPoints(emptyList())
+                        viewModel.startRide()
+                    } else {
+                        locationPermissions.launchMultiplePermissionRequest()
+                    }
                 },
                 onPause = { viewModel.pauseRide() },
                 onResume = { viewModel.resumeRide() },
@@ -165,19 +191,13 @@ private fun StatsBottomSheet(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 StatCard("DISTANCE", FormatUtil.formatDistance(distanceKm))
                 StatCard("DURATION", FormatUtil.formatDuration(elapsedSeconds))
                 StatCard("SPEED", FormatUtil.formatSpeed(currentSpeedKmh))
             }
             Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 StatCard("AVG", FormatUtil.formatSpeed(avgSpeedKmh))
                 StatCard("MAX", FormatUtil.formatSpeed(maxSpeedKmh))
                 StatCard("ELEVATION", "%.0f m".format(elevationM))
@@ -210,36 +230,20 @@ private fun RideControls(
                     }
                 }
                 RideStatus.RECORDING -> {
-                    FloatingActionButton(
-                        onClick = onPause,
-                        modifier = Modifier.size(64.dp),
-                        containerColor = AmberPause
-                    ) {
+                    FloatingActionButton(onClick = onPause, modifier = Modifier.size(64.dp), containerColor = AmberPause) {
                         Icon(Icons.Default.Pause, "Pause", tint = Color.White)
                     }
                     Spacer(Modifier.width(32.dp))
-                    FloatingActionButton(
-                        onClick = onStop,
-                        modifier = Modifier.size(64.dp),
-                        containerColor = RedDanger
-                    ) {
+                    FloatingActionButton(onClick = onStop, modifier = Modifier.size(64.dp), containerColor = RedDanger) {
                         Icon(Icons.Default.Stop, "Stop", tint = Color.White)
                     }
                 }
                 RideStatus.PAUSED -> {
-                    FloatingActionButton(
-                        onClick = onResume,
-                        modifier = Modifier.size(64.dp),
-                        containerColor = GreenSuccess
-                    ) {
+                    FloatingActionButton(onClick = onResume, modifier = Modifier.size(64.dp), containerColor = GreenSuccess) {
                         Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White)
                     }
                     Spacer(Modifier.width(32.dp))
-                    FloatingActionButton(
-                        onClick = onStop,
-                        modifier = Modifier.size(64.dp),
-                        containerColor = RedDanger
-                    ) {
+                    FloatingActionButton(onClick = onStop, modifier = Modifier.size(64.dp), containerColor = RedDanger) {
                         Icon(Icons.Default.Stop, "Stop", tint = Color.White)
                     }
                 }
@@ -251,11 +255,7 @@ private fun RideControls(
 
 @Composable
 private fun WeatherBadge(modifier: Modifier, temperature: Float, condition: String) {
-    Surface(
-        modifier = modifier,
-        color = SurfaceDark.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    Surface(modifier = modifier, color = SurfaceDark.copy(alpha = 0.85f), shape = RoundedCornerShape(12.dp)) {
         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.WbSunny, null, tint = AmberPause, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
@@ -266,10 +266,7 @@ private fun WeatherBadge(modifier: Modifier, temperature: Float, condition: Stri
 
 @Composable
 private fun RecordingIndicator(isPaused: Boolean) {
-    Surface(
-        color = if (isPaused) AmberPause else RedDanger,
-        shape = RoundedCornerShape(8.dp)
-    ) {
+    Surface(color = if (isPaused) AmberPause else RedDanger, shape = RoundedCornerShape(8.dp)) {
         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color.White))
             Spacer(Modifier.width(6.dp))
@@ -285,14 +282,8 @@ private fun CrashAlertDialog(onDismiss: () -> Unit, onSendSOS: () -> Unit) {
         title = { Text("Crash Detected!", color = RedDanger, fontWeight = FontWeight.Bold) },
         text = { Text("A hard impact was detected. Are you okay? Tap 'I'm OK' to dismiss or 'Send SOS' to alert your emergency contact.") },
         confirmButton = {
-            Button(onClick = onSendSOS, colors = ButtonDefaults.buttonColors(containerColor = RedDanger)) {
-                Text("Send SOS")
-            }
+            Button(onClick = onSendSOS, colors = ButtonDefaults.buttonColors(containerColor = RedDanger)) { Text("Send SOS") }
         },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("I'm OK") }
-        }
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("I'm OK") } }
     )
 }
-
-private const val DARK_MAP_STYLE = """[{"elementType":"geometry","stylers":[{"color":"#212121"}]},{"elementType":"labels.icon","stylers":[{"visibility":"off"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},{"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3c3c3c"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]"""

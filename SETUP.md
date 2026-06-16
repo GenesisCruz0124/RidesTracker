@@ -4,23 +4,15 @@
 - Android Studio Hedgehog (2023.1) or newer
 - Android SDK 35
 - Java 17+
-- Google Maps API Key
+- **No API key needed** — uses OpenStreetMap (100% free)
 
-## 1. Get a Google Maps API Key
-1. Go to https://console.cloud.google.com
-2. Create a new project or select an existing one
-3. Enable **Maps SDK for Android**
-4. Create an API key under Credentials
-5. Restrict the key to your app's package name: `com.ridestracker`
-
-## 2. Configure local.properties
-Edit `local.properties` in the project root:
+## 1. Configure local.properties
+Edit `local.properties` in the project root — just set your SDK path:
 ```
-MAPS_API_KEY=your_actual_api_key_here
 sdk.dir=/path/to/your/Android/sdk
 ```
 
-## 3. Open in Android Studio
+## 2. Open in Android Studio
 ```bash
 git clone <repo-url>
 cd RidesTracker

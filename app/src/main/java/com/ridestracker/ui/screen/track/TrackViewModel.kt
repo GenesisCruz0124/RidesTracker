@@ -8,12 +8,12 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.maps.model.LatLng
 import com.google.gson.Gson
 import com.ridestracker.data.remote.WeatherService
 import com.ridestracker.data.remote.toWeatherLabel
 import com.ridestracker.data.repository.RideRepository
 import com.ridestracker.domain.model.ActiveRideState
+import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.Ride
 import com.ridestracker.domain.model.RideStatus
 import com.ridestracker.domain.model.VehicleType
@@ -21,6 +21,7 @@ import com.ridestracker.domain.model.WeatherSnapshot
 import com.ridestracker.service.CrashDetectionService
 import com.ridestracker.service.LocationTrackingService
 import com.ridestracker.util.DistanceUtil
+import com.ridestracker.util.FormatUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,9 +44,7 @@ class TrackViewModel @Inject constructor(
     private val _trackingService = MutableStateFlow<LocationTrackingService?>(null)
 
     val rideState: StateFlow<ActiveRideState> = _trackingService
-        .flatMapLatest { service ->
-            service?.state ?: flowOf(ActiveRideState())
-        }
+        .flatMapLatest { service -> service?.state ?: flowOf(ActiveRideState()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ActiveRideState())
 
     private val _savedRideId = MutableStateFlow<String?>(null)
@@ -103,10 +102,10 @@ class TrackViewModel @Inject constructor(
         crashDetectionService.stop()
         viewModelScope.launch {
             val rideId = finalState.rideId ?: return@launch
-            val (ascent, descent) = com.ridestracker.util.DistanceUtil.elevationGainLoss(finalState.coordinates)
+            val (ascent, descent) = DistanceUtil.elevationGainLoss(finalState.coordinates)
             val ride = Ride(
                 id = rideId,
-                title = "Ride on ${com.ridestracker.util.FormatUtil.formatDate(System.currentTimeMillis())}",
+                title = "Ride on ${FormatUtil.formatDate(System.currentTimeMillis())}",
                 startedAt = System.currentTimeMillis() - (finalState.elapsedSeconds * 1000),
                 endedAt = System.currentTimeMillis(),
                 distanceKm = finalState.distanceKm,
@@ -115,9 +114,7 @@ class TrackViewModel @Inject constructor(
                 avgSpeedKmh = finalState.avgSpeedKmh,
                 totalAscentM = ascent,
                 totalDescentM = descent,
-                polylineEncoded = encodePolyline(finalState.coordinates.map {
-                    LatLng(it.lat, it.lng)
-                }),
+                polylineEncoded = encodePolyline(finalState.coordinates),
                 weatherJson = _weather.value?.let { Gson().toJson(it) },
                 vehicleType = VehicleType.BICYCLE
             )
@@ -149,13 +146,13 @@ class TrackViewModel @Inject constructor(
 
     fun clearSavedRideId() { _savedRideId.value = null }
 
-    private fun encodePolyline(points: List<LatLng>): String {
+    private fun encodePolyline(coordinates: List<Coordinate>): String {
         val sb = StringBuilder()
         var prevLat = 0
         var prevLng = 0
-        for (p in points) {
-            val lat = (p.latitude * 1e5).toInt()
-            val lng = (p.longitude * 1e5).toInt()
+        for (coord in coordinates) {
+            val lat = (coord.lat * 1e5).toInt()
+            val lng = (coord.lng * 1e5).toInt()
             sb.append(encodeValue(lat - prevLat))
             sb.append(encodeValue(lng - prevLng))
             prevLat = lat; prevLng = lng

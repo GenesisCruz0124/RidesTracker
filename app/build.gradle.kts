@@ -1,16 +1,9 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-}
-
-val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) load(localPropertiesFile.inputStream())
 }
 
 android {
@@ -24,7 +17,6 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
@@ -88,9 +80,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Maps & Location
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
+    // Map (OpenStreetMap — no API key required)
+    implementation(libs.osmdroid)
+
+    // Location
     implementation(libs.play.services.location)
 
     // Networking
