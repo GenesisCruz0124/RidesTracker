@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.ridestracker.domain.model.Coordinate
@@ -35,6 +38,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import java.io.File
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -59,6 +63,22 @@ fun TrackScreen(
     }}
 
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapViewRef.value?.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapViewRef.value?.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            mapViewRef.value?.onDetach()
+        }
+    }
 
     LaunchedEffect(savedRideId) {
         savedRideId?.let { id ->
@@ -100,17 +120,29 @@ fun TrackScreen(
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
-                    Configuration.getInstance().userAgentValue = ctx.packageName
+                    Configuration.getInstance().apply {
+                        userAgentValue = ctx.packageName
+                        val cacheDir = File(ctx.cacheDir, "osmdroid")
+                        osmdroidBasePath = cacheDir
+                        osmdroidTileCache = File(cacheDir, "tiles")
+                    }
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
-                        controller.setZoom(15.0)
                         isTilesScaledToDpi = true
+                        controller.setZoom(15.0)
+                        controller.setCenter(GeoPoint(0.0, 0.0))
 
                         val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
                         locationOverlay.enableMyLocation()
+                        locationOverlay.runOnFirstFix {
+                            post {
+                                locationOverlay.myLocation?.let { controller.animateTo(it) }
+                            }
+                        }
                         overlays.add(locationOverlay)
 
+                        onResume()
                         mapViewRef.value = this
                     }
                 },
