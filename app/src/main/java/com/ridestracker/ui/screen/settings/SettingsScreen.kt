@@ -15,7 +15,8 @@ import com.ridestracker.ui.theme.OrangeAccent
 @Composable
 fun SettingsScreen(
     onNavigateMaintenance: () -> Unit,
-    onNavigateFuel: () -> Unit
+    onNavigateFuel: () -> Unit,
+    onNavigateEmergencyContact: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -30,7 +31,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(8.dp))
         Text("Safety", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SettingsItem(Icons.Default.LocalPhone, "Emergency Contact", "SOS alert recipient", {})
+        SettingsItem(Icons.Default.LocalPhone, "Emergency Contact", "SOS alert recipient", onNavigateEmergencyContact)
         SettingsItem(Icons.Default.Warning, "Crash Detection", "Auto-detect hard impacts", {})
 
         Spacer(Modifier.height(8.dp))

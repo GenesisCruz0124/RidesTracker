@@ -6,11 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.telephony.SmsManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.ridestracker.data.remote.WeatherService
 import com.ridestracker.data.remote.toWeatherLabel
+import com.ridestracker.data.repository.EmergencyContactRepository
 import com.ridestracker.data.repository.RideRepository
 import com.ridestracker.domain.model.ActiveRideState
 import com.ridestracker.domain.model.Coordinate
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -38,6 +41,7 @@ class TrackViewModel @Inject constructor(
     application: Application,
     private val rideRepository: RideRepository,
     private val weatherService: WeatherService,
+    private val emergencyContactRepository: EmergencyContactRepository,
     val crashDetectionService: CrashDetectionService
 ) : AndroidViewModel(application) {
 
@@ -55,6 +59,9 @@ class TrackViewModel @Inject constructor(
 
     private val _showCrashAlert = MutableStateFlow(false)
     val showCrashAlert: StateFlow<Boolean> = _showCrashAlert.asStateFlow()
+
+    private val _sosResult = MutableStateFlow<SosResult?>(null)
+    val sosResult: StateFlow<SosResult?> = _sosResult.asStateFlow()
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -144,6 +151,33 @@ class TrackViewModel @Inject constructor(
         crashDetectionService.acknowledgeCrash()
     }
 
+    fun sendSOS() {
+        _showCrashAlert.value = false
+        crashDetectionService.acknowledgeCrash()
+        viewModelScope.launch {
+            val contact = emergencyContactRepository.emergencyContact.first()
+            if (!contact.isSet) {
+                _sosResult.value = SosResult.NoContactConfigured
+                return@launch
+            }
+            val coord = rideState.value.coordinates.lastOrNull()
+            val locationText = if (coord != null) {
+                "https://maps.google.com/?q=${coord.lat},${coord.lng}"
+            } else {
+                "location unavailable"
+            }
+            val message = "RidesTracker SOS: I may need help. My last known location: $locationText"
+            try {
+                SmsManager.getDefault().sendTextMessage(contact.phoneNumber, null, message, null, null)
+                _sosResult.value = SosResult.Sent
+            } catch (e: SecurityException) {
+                _sosResult.value = SosResult.PermissionDenied
+            }
+        }
+    }
+
+    fun clearSosResult() { _sosResult.value = null }
+
     fun clearSavedRideId() { _savedRideId.value = null }
 
     private fun encodePolyline(coordinates: List<Coordinate>): String {
@@ -175,4 +209,10 @@ class TrackViewModel @Inject constructor(
         super.onCleared()
         getApplication<Application>().unbindService(serviceConnection)
     }
+}
+
+sealed class SosResult {
+    object Sent : SosResult()
+    object NoContactConfigured : SosResult()
+    object PermissionDenied : SosResult()
 }

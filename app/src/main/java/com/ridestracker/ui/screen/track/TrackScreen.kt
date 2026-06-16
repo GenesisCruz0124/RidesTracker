@@ -51,10 +51,28 @@ fun TrackScreen(
     val savedRideId by viewModel.savedRideId.collectAsState()
     val weather by viewModel.weather.collectAsState()
     val showCrashAlert by viewModel.showCrashAlert.collectAsState()
+    val sosResult by viewModel.sosResult.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val locationPermissions = rememberMultiplePermissionsState(
         listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     )
+    val smsPermission = rememberMultiplePermissionsState(
+        listOf(Manifest.permission.SEND_SMS)
+    )
+
+    LaunchedEffect(sosResult) {
+        val message = when (sosResult) {
+            SosResult.Sent -> "SOS sent to your emergency contact"
+            SosResult.NoContactConfigured -> "Set an emergency contact in More > Emergency Contact first"
+            SosResult.PermissionDenied -> "SMS permission is required to send an SOS"
+            null -> null
+        }
+        if (message != null) {
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearSosResult()
+        }
+    }
 
     // Keep a reference to the live polyline overlay so we can update it
     val routePolyline = remember { Polyline().apply {
@@ -111,7 +129,13 @@ fun TrackScreen(
     if (showCrashAlert) {
         CrashAlertDialog(
             onDismiss = { viewModel.dismissCrashAlert() },
-            onSendSOS = { viewModel.dismissCrashAlert() }
+            onSendSOS = {
+                if (smsPermission.allPermissionsGranted) {
+                    viewModel.sendSOS()
+                } else {
+                    smsPermission.launchMultiplePermissionRequest()
+                }
+            }
         )
     }
 
@@ -171,6 +195,11 @@ fun TrackScreen(
                 condition = w.conditionLabel
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+        )
 
         AnimatedVisibility(
             visible = rideState.status == RideStatus.RECORDING || rideState.status == RideStatus.PAUSED,

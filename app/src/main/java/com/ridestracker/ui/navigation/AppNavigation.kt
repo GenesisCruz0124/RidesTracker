@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ridestracker.ui.screen.history.HistoryScreen
 import com.ridestracker.ui.screen.history.RideDetailScreen
+import com.ridestracker.ui.screen.settings.EmergencyContactScreen
 import com.ridestracker.ui.screen.settings.MaintenanceScreen
 import com.ridestracker.ui.screen.settings.FuelLogScreen
 import com.ridestracker.ui.screen.settings.SettingsScreen
@@ -86,7 +87,8 @@ fun AppNavigation() {
             composable(Screen.More.route) {
                 SettingsScreen(
                     onNavigateMaintenance = { navController.navigate("maintenance") },
-                    onNavigateFuel = { navController.navigate("fuel") }
+                    onNavigateFuel = { navController.navigate("fuel") },
+                    onNavigateEmergencyContact = { navController.navigate("emergency_contact") }
                 )
             }
             composable(
@@ -114,6 +116,9 @@ fun AppNavigation() {
             }
             composable("fuel") {
                 FuelLogScreen(onBack = { navController.popBackStack() })
+            }
+            composable("emergency_contact") {
+                EmergencyContactScreen(onBack = { navController.popBackStack() })
             }
         }
     }
