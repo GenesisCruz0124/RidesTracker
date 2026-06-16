@@ -38,11 +38,20 @@ jobs:
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
 
+      - name: Rename APK with app name and version
+        id: apk
+        run: |
+          VERSION_NAME=$(grep -m1 'versionName = ' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
+          APK_NAME="RidesTracker-v${VERSION_NAME}-debug.apk"
+          mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/${APK_NAME}"
+          echo "apk_name=${APK_NAME}" >> "$GITHUB_OUTPUT"
+          echo "apk_path=app/build/outputs/apk/debug/${APK_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RidesTracker-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: ${{ steps.apk.outputs.apk_name }}
+          path: ${{ steps.apk.outputs.apk_path }}
           retention-days: 30
 
       - name: Delete existing release (if any)
@@ -72,10 +81,10 @@ jobs:
             - Dark theme
 
             ### Install:
-            1. Download `app-debug.apk` below
+            1. Download the `.apk` file below
             2. On your Android phone: Settings → Security → Allow unknown sources
             3. Open the downloaded APK and tap Install
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: ${{ steps.apk.outputs.apk_path }}
           draft: false
           prerelease: true
         env:
