@@ -98,7 +98,9 @@ fun AppNavigation() {
                 RideSummaryScreen(
                     rideId = backStack.arguments?.getString("rideId") ?: "",
                     onDone = { navController.navigate(Screen.History.route) {
-                        popUpTo(Screen.Track.route)
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
                     }}
                 )
             }
