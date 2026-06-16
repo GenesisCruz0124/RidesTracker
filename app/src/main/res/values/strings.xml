@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RidesTracker</string>
+    <string name="notification_channel_name">Ride Tracking</string>
+    <string name="notification_channel_description">Shows current ride status while tracking is active</string>
+    <string name="notification_title">Ride in progress</string>
+    <string name="sos_channel_name">SOS Alerts</string>
+    <string name="sos_channel_description">Emergency SOS countdown alerts</string>
+    <string name="maintenance_channel_name">Maintenance Reminders</string>
+</resources>
