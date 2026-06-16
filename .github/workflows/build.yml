@@ -1,0 +1,82 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [ "claude/ride-tracking-app-plan-wyzy6n" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform & build tools
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" --sdk_root=$ANDROID_SDK_ROOT
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RidesTracker-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Delete existing release (if any)
+        run: |
+          gh release delete v1.0-debug --yes 2>/dev/null || true
+          git push --delete origin v1.0-debug 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-debug
+          name: "RidesTracker Debug APK"
+          body: |
+            ## RidesTracker Debug Build
+
+            **Direct APK download — install on your Android device (8.0+)**
+
+            ### What's included:
+            - Live GPS ride tracking with OpenStreetMap (no API key needed)
+            - Distance, speed, elevation tracking
+            - Ride history saved locally
+            - Maintenance tracker & fuel log
+            - Crash detection + SOS alert
+            - Weather overlay
+            - Dark theme
+
+            ### Install:
+            1. Download `app-debug.apk` below
+            2. On your Android phone: Settings → Security → Allow unknown sources
+            3. Open the downloaded APK and tap Install
+          files: app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
