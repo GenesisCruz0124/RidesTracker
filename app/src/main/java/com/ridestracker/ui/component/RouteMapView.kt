@@ -74,10 +74,16 @@ fun RouteMapView(
                 overlays.add(polyline)
 
                 onResume()
+                controller.setZoom(16.0)
+                controller.setCenter(points.first())
 
-                val bounds = BoundingBox.fromGeoPoints(points)
                 post {
-                    zoomToBoundingBox(bounds, false, 64)
+                    runCatching {
+                        val bounds = BoundingBox.fromGeoPoints(points)
+                        if (bounds.latNorth != bounds.latSouth || bounds.lonEast != bounds.lonWest) {
+                            zoomToBoundingBox(bounds, false, 64)
+                        }
+                    }
                 }
             }
         },
