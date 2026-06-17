@@ -11,8 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +38,13 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 val bottomNavItems = listOf(Screen.Track, Screen.History, Screen.Stats, Screen.More)
 
+private fun NavController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(Screen.Track.route) { inclusive = false }
+        launchSingleTop = true
+    }
+}
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -55,13 +62,7 @@ fun AppNavigation() {
                             icon = { Icon(screen.icon, contentDescription = screen.label) },
                             label = { Text(screen.label) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            onClick = { navController.navigateToTab(screen.route) }
                         )
                     }
                 }
@@ -97,12 +98,7 @@ fun AppNavigation() {
             ) { backStack ->
                 RideSummaryScreen(
                     rideId = backStack.arguments?.getString("rideId") ?: "",
-                    onDone = {
-                        navController.popBackStack(Screen.Track.route, inclusive = false)
-                        navController.navigate(Screen.History.route) {
-                            launchSingleTop = true
-                        }
-                    }
+                    onDone = { navController.navigateToTab(Screen.History.route) }
                 )
             }
             composable(
