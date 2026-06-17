@@ -73,6 +73,8 @@ fun RouteMapView(
                 }
                 overlays.add(polyline)
 
+                onResume()
+
                 val bounds = BoundingBox.fromGeoPoints(points)
                 post {
                     zoomToBoundingBox(bounds, false, 64)

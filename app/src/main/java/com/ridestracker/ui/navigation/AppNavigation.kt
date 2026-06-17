@@ -97,11 +97,12 @@ fun AppNavigation() {
             ) { backStack ->
                 RideSummaryScreen(
                     rideId = backStack.arguments?.getString("rideId") ?: "",
-                    onDone = { navController.navigate(Screen.History.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }}
+                    onDone = {
+                        navController.popBackStack(Screen.Track.route, inclusive = false)
+                        navController.navigate(Screen.History.route) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
             composable(
