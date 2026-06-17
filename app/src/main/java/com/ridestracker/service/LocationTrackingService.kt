@@ -137,7 +137,6 @@ class LocationTrackingService : Service() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
         _state.value = ActiveRideState()
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
         return finalState
     }
 
