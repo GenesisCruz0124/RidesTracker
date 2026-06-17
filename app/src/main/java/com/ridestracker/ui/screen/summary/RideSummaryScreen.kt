@@ -16,7 +16,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ridestracker.data.repository.RideRepository
+import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.Ride
+import com.ridestracker.ui.component.RouteMapView
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.ui.theme.GreenSuccess
 import com.ridestracker.ui.theme.OrangeAccent
@@ -34,8 +36,14 @@ class RideSummaryViewModel @Inject constructor(
     private val _ride = MutableStateFlow<Ride?>(null)
     val ride: StateFlow<Ride?> = _ride
 
+    private val _coordinates = MutableStateFlow<List<Coordinate>>(emptyList())
+    val coordinates: StateFlow<List<Coordinate>> = _coordinates
+
     fun loadRide(id: String) {
-        viewModelScope.launch { _ride.value = rideRepository.getRideById(id) }
+        viewModelScope.launch {
+            _ride.value = rideRepository.getRideById(id)
+            _coordinates.value = rideRepository.getCoordinatesForRide(id)
+        }
     }
 
     fun updateTitle(rideId: String, title: String) {
@@ -54,6 +62,7 @@ fun RideSummaryScreen(
 ) {
     LaunchedEffect(rideId) { viewModel.loadRide(rideId) }
     val ride by viewModel.ride.collectAsState()
+    val coordinates by viewModel.coordinates.collectAsState()
 
     Scaffold(
         topBar = {
@@ -82,6 +91,10 @@ fun RideSummaryScreen(
                     }
                 }
 
+                Card(shape = RoundedCornerShape(16.dp)) {
+                    RouteMapView(coordinates = coordinates)
+                }
+
                 Card {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Summary", style = MaterialTheme.typography.titleMedium)
@@ -103,7 +116,10 @@ fun RideSummaryScreen(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     OutlinedButton(
                         onClick = { /* TODO: share */ },
                         modifier = Modifier.weight(1f)

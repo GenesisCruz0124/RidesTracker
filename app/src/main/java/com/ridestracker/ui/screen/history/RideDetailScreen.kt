@@ -2,6 +2,7 @@ package com.ridestracker.ui.screen.history
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,7 +14,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ridestracker.data.repository.RideRepository
+import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.Ride
+import com.ridestracker.ui.component.RouteMapView
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.util.FormatUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,8 +32,14 @@ class RideDetailViewModel @Inject constructor(
     private val _ride = MutableStateFlow<Ride?>(null)
     val ride: StateFlow<Ride?> = _ride
 
+    private val _coordinates = MutableStateFlow<List<Coordinate>>(emptyList())
+    val coordinates: StateFlow<List<Coordinate>> = _coordinates
+
     fun loadRide(rideId: String) {
-        viewModelScope.launch { _ride.value = rideRepository.getRideById(rideId) }
+        viewModelScope.launch {
+            _ride.value = rideRepository.getRideById(rideId)
+            _coordinates.value = rideRepository.getCoordinatesForRide(rideId)
+        }
     }
 
     fun deleteRide(rideId: String, onDeleted: () -> Unit) {
@@ -51,6 +60,7 @@ fun RideDetailScreen(
     LaunchedEffect(rideId) { viewModel.loadRide(rideId) }
 
     val ride by viewModel.ride.collectAsState()
+    val coordinates by viewModel.coordinates.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -75,6 +85,10 @@ fun RideDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(FormatUtil.formatDate(r.startedAt), style = MaterialTheme.typography.bodyMedium)
+
+                Card(shape = RoundedCornerShape(16.dp)) {
+                    RouteMapView(coordinates = coordinates)
+                }
 
                 Card {
                     Column(modifier = Modifier.padding(16.dp)) {
