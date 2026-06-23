@@ -14,8 +14,10 @@ import com.ridestracker.data.remote.WeatherService
 import com.ridestracker.data.remote.toWeatherLabel
 import com.ridestracker.data.repository.EmergencyContactRepository
 import com.ridestracker.data.repository.RideRepository
+import com.ridestracker.data.repository.SettingsRepository
 import com.ridestracker.domain.model.ActiveRideState
 import com.ridestracker.domain.model.Coordinate
+import com.ridestracker.domain.model.MapStyle
 import com.ridestracker.domain.model.Ride
 import com.ridestracker.domain.model.RideStatus
 import com.ridestracker.domain.model.VehicleType
@@ -42,6 +44,7 @@ class TrackViewModel @Inject constructor(
     private val rideRepository: RideRepository,
     private val weatherService: WeatherService,
     private val emergencyContactRepository: EmergencyContactRepository,
+    private val settingsRepository: SettingsRepository,
     val crashDetectionService: CrashDetectionService
 ) : AndroidViewModel(application) {
 
@@ -69,6 +72,9 @@ class TrackViewModel @Inject constructor(
     fun selectVehicleType(type: VehicleType) {
         _selectedVehicleType.value = type
     }
+
+    val mapStyle: StateFlow<MapStyle> = settingsRepository.mapStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MapStyle.STANDARD)
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {

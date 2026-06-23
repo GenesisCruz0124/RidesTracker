@@ -14,7 +14,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ridestracker.data.repository.RideRepository
+import com.ridestracker.data.repository.SettingsRepository
 import com.ridestracker.domain.model.Coordinate
+import com.ridestracker.domain.model.MapStyle
 import com.ridestracker.domain.model.Ride
 import com.ridestracker.domain.model.VehicleType
 import com.ridestracker.ui.component.RouteMapView
@@ -22,19 +24,25 @@ import com.ridestracker.ui.component.StatCard
 import com.ridestracker.util.FormatUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class RideDetailViewModel @Inject constructor(
-    private val rideRepository: RideRepository
+    private val rideRepository: RideRepository,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _ride = MutableStateFlow<Ride?>(null)
     val ride: StateFlow<Ride?> = _ride
 
     private val _coordinates = MutableStateFlow<List<Coordinate>>(emptyList())
     val coordinates: StateFlow<List<Coordinate>> = _coordinates
+
+    val mapStyle: StateFlow<MapStyle> = settingsRepository.mapStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MapStyle.STANDARD)
 
     fun loadRide(rideId: String) {
         viewModelScope.launch {
@@ -62,6 +70,7 @@ fun RideDetailScreen(
 
     val ride by viewModel.ride.collectAsState()
     val coordinates by viewModel.coordinates.collectAsState()
+    val mapStyle by viewModel.mapStyle.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -88,7 +97,7 @@ fun RideDetailScreen(
                 Text(FormatUtil.formatDate(r.startedAt), style = MaterialTheme.typography.bodyMedium)
 
                 Card(shape = RoundedCornerShape(16.dp)) {
-                    RouteMapView(coordinates = coordinates)
+                    RouteMapView(coordinates = coordinates, mapStyle = mapStyle)
                 }
 
                 Card {

@@ -33,8 +33,8 @@ import com.ridestracker.ui.component.StatCard
 import com.ridestracker.ui.theme.*
 import com.ridestracker.util.DistanceUtil
 import com.ridestracker.util.FormatUtil
+import com.ridestracker.util.MapTileUtil
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
@@ -55,6 +55,7 @@ fun TrackScreen(
     val showCrashAlert by viewModel.showCrashAlert.collectAsState()
     val sosResult by viewModel.sosResult.collectAsState()
     val selectedVehicleType by viewModel.selectedVehicleType.collectAsState()
+    val mapStyle by viewModel.mapStyle.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val locationPermissions = rememberMultiplePermissionsState(
@@ -108,6 +109,13 @@ fun TrackScreen(
         }
     }
 
+    LaunchedEffect(mapStyle, mapViewRef.value) {
+        mapViewRef.value?.let { mapView ->
+            mapView.setTileSource(MapTileUtil.tileSourceFor(mapStyle))
+            mapView.invalidate()
+        }
+    }
+
     // Update polyline and camera when new coordinates arrive
     LaunchedEffect(rideState.coordinates) {
         val coords = rideState.coordinates
@@ -154,7 +162,7 @@ fun TrackScreen(
                         osmdroidTileCache = File(cacheDir, "tiles")
                     }
                     MapView(ctx).apply {
-                        setTileSource(TileSourceFactory.MAPNIK)
+                        setTileSource(MapTileUtil.tileSourceFor(mapStyle))
                         setMultiTouchControls(true)
                         isTilesScaledToDpi = true
                         controller.setZoom(15.0)

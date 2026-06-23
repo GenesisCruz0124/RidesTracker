@@ -18,8 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Icon
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ridestracker.domain.model.Coordinate
+import com.ridestracker.domain.model.MapStyle
+import com.ridestracker.util.MapTileUtil
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -29,7 +30,8 @@ import java.io.File
 @Composable
 fun RouteMapView(
     coordinates: List<Coordinate>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    mapStyle: MapStyle = MapStyle.STANDARD
 ) {
     if (coordinates.size < 2) {
         Box(
@@ -62,7 +64,7 @@ fun RouteMapView(
                 osmdroidTileCache = File(cacheDir, "tiles")
             }
             MapView(ctx).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
+                setTileSource(MapTileUtil.tileSourceFor(mapStyle))
                 setMultiTouchControls(true)
                 isTilesScaledToDpi = true
 
@@ -88,6 +90,7 @@ fun RouteMapView(
             }
         },
         update = { mapView ->
+            mapView.setTileSource(MapTileUtil.tileSourceFor(mapStyle))
             mapView.overlays.filterIsInstance<Polyline>().forEach { it.setPoints(points) }
             mapView.invalidate()
         }
