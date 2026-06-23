@@ -16,7 +16,7 @@ import com.ridestracker.data.local.entity.RideEntity
         MaintenanceItemEntity::class,
         FuelEntryEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

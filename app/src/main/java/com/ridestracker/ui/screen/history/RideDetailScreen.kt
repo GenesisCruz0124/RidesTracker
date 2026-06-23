@@ -16,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import com.ridestracker.data.repository.RideRepository
 import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.Ride
+import com.ridestracker.domain.model.VehicleType
 import com.ridestracker.ui.component.RouteMapView
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.util.FormatUtil
@@ -105,6 +106,11 @@ fun RideDetailScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             StatCard("ASCENT", FormatUtil.formatElevation(r.totalAscentM))
                             StatCard("DESCENT", FormatUtil.formatElevation(r.totalDescentM))
+                        }
+                        if (r.vehicleType == VehicleType.WALKING) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                StatCard("STEPS", r.steps.toString())
+                            }
                         }
                     }
                 }

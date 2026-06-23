@@ -38,4 +38,8 @@ object DistanceUtil {
     fun kmToMiles(km: Double): Double = km * 0.621371
 
     fun mToFeet(m: Double): Double = m * 3.28084
+
+    private const val AVG_STRIDE_METERS = 0.75
+
+    fun estimateSteps(distanceKm: Double): Int = ((distanceKm * 1000.0) / AVG_STRIDE_METERS).toInt()
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.ridestracker.domain.model.Coordinate
 import com.ridestracker.domain.model.RideStatus
+import com.ridestracker.domain.model.VehicleType
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.ui.theme.*
 import com.ridestracker.util.DistanceUtil
@@ -52,6 +54,7 @@ fun TrackScreen(
     val weather by viewModel.weather.collectAsState()
     val showCrashAlert by viewModel.showCrashAlert.collectAsState()
     val sosResult by viewModel.sosResult.collectAsState()
+    val selectedVehicleType by viewModel.selectedVehicleType.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val locationPermissions = rememberMultiplePermissionsState(
@@ -222,6 +225,17 @@ fun TrackScreen(
                 )
             }
 
+            AnimatedVisibility(
+                visible = rideState.status == RideStatus.IDLE,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                VehicleTypeSelector(
+                    selected = selectedVehicleType,
+                    onSelect = { viewModel.selectVehicleType(it) }
+                )
+            }
+
             RideControls(
                 status = rideState.status,
                 onStart = {
@@ -263,6 +277,63 @@ private fun StatsBottomSheet(
                 StatCard("MAX", FormatUtil.formatSpeed(maxSpeedKmh))
                 StatCard("ELEVATION", "%.0f m".format(elevationM))
             }
+        }
+    }
+}
+
+@Composable
+private fun VehicleTypeSelector(selected: VehicleType, onSelect: (VehicleType) -> Unit) {
+    Surface(color = SurfaceDark) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            VehicleTypeOption(
+                icon = Icons.Default.DirectionsBike,
+                label = "Bike",
+                isSelected = selected == VehicleType.BICYCLE,
+                onClick = { onSelect(VehicleType.BICYCLE) },
+                modifier = Modifier.weight(1f)
+            )
+            VehicleTypeOption(
+                icon = Icons.Default.TwoWheeler,
+                label = "Motorcycle",
+                isSelected = selected == VehicleType.MOTORCYCLE,
+                onClick = { onSelect(VehicleType.MOTORCYCLE) },
+                modifier = Modifier.weight(1f)
+            )
+            VehicleTypeOption(
+                icon = Icons.AutoMirrored.Filled.DirectionsWalk,
+                label = "Walking",
+                isSelected = selected == VehicleType.WALKING,
+                onClick = { onSelect(VehicleType.WALKING) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun VehicleTypeOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(12.dp)),
+        color = if (isSelected) OrangeAccent else SurfaceDark,
+        shape = RoundedCornerShape(12.dp),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(icon, label, tint = if (isSelected) Color.White else TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = if (isSelected) Color.White else TextSecondary)
         }
     }
 }

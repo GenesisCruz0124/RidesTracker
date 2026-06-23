@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
@@ -30,7 +31,11 @@ fun RideCard(ride: Ride, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (ride.vehicleType == VehicleType.MOTORCYCLE) Icons.Default.TwoWheeler else Icons.Default.DirectionsBike,
+                imageVector = when (ride.vehicleType) {
+                    VehicleType.MOTORCYCLE -> Icons.Default.TwoWheeler
+                    VehicleType.WALKING -> Icons.AutoMirrored.Filled.DirectionsWalk
+                    VehicleType.BICYCLE -> Icons.Default.DirectionsBike
+                },
                 contentDescription = null,
                 tint = OrangeAccent,
                 modifier = Modifier.size(40.dp)
@@ -56,6 +61,13 @@ fun RideCard(ride: Ride, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
+                if (ride.vehicleType == VehicleType.WALKING) {
+                    Text(
+                        text = "${ride.steps} steps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
             }
         }
     }

@@ -63,6 +63,13 @@ class TrackViewModel @Inject constructor(
     private val _sosResult = MutableStateFlow<SosResult?>(null)
     val sosResult: StateFlow<SosResult?> = _sosResult.asStateFlow()
 
+    private val _selectedVehicleType = MutableStateFlow(VehicleType.BICYCLE)
+    val selectedVehicleType: StateFlow<VehicleType> = _selectedVehicleType.asStateFlow()
+
+    fun selectVehicleType(type: VehicleType) {
+        _selectedVehicleType.value = type
+    }
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             _trackingService.value = (binder as LocationTrackingService.LocalBinder).getService()
@@ -110,6 +117,7 @@ class TrackViewModel @Inject constructor(
         viewModelScope.launch {
             val rideId = finalState.rideId ?: return@launch
             val (ascent, descent) = DistanceUtil.elevationGainLoss(finalState.coordinates)
+            val vehicleType = _selectedVehicleType.value
             val ride = Ride(
                 id = rideId,
                 title = "Ride on ${FormatUtil.formatDate(System.currentTimeMillis())}",
@@ -123,7 +131,8 @@ class TrackViewModel @Inject constructor(
                 totalDescentM = descent,
                 polylineEncoded = encodePolyline(finalState.coordinates),
                 weatherJson = _weather.value?.let { Gson().toJson(it) },
-                vehicleType = VehicleType.BICYCLE
+                vehicleType = vehicleType,
+                steps = if (vehicleType == VehicleType.WALKING) DistanceUtil.estimateSteps(finalState.distanceKm) else 0
             )
             rideRepository.saveRide(ride, finalState.coordinates)
             _savedRideId.value = rideId

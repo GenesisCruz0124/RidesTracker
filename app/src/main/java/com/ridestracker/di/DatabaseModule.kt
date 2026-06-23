@@ -19,7 +19,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "rides_tracker.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "rides_tracker.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides fun provideRideDao(db: AppDatabase): RideDao = db.rideDao()
 

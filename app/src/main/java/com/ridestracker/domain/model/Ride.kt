@@ -26,10 +26,11 @@ data class Ride(
     val notes: String? = null,
     val tags: List<String> = emptyList(),
     val moodRating: Int = 0,
-    val vehicleType: VehicleType = VehicleType.BICYCLE
+    val vehicleType: VehicleType = VehicleType.BICYCLE,
+    val steps: Int = 0
 )
 
-enum class VehicleType { BICYCLE, MOTORCYCLE }
+enum class VehicleType { BICYCLE, MOTORCYCLE, WALKING }
 
 enum class RideTag(val label: String) {
     COMMUTE("Commute"),

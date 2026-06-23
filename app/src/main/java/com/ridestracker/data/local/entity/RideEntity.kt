@@ -22,7 +22,8 @@ data class RideEntity(
     val notes: String?,
     val tags: String,
     val moodRating: Int,
-    val vehicleType: String
+    val vehicleType: String,
+    val steps: Int = 0
 )
 
 fun RideEntity.toDomain() = Ride(
@@ -41,7 +42,8 @@ fun RideEntity.toDomain() = Ride(
     notes = notes,
     tags = if (tags.isBlank()) emptyList() else tags.split(","),
     moodRating = moodRating,
-    vehicleType = runCatching { VehicleType.valueOf(vehicleType) }.getOrDefault(VehicleType.BICYCLE)
+    vehicleType = runCatching { VehicleType.valueOf(vehicleType) }.getOrDefault(VehicleType.BICYCLE),
+    steps = steps
 )
 
 fun Ride.toEntity() = RideEntity(
@@ -60,5 +62,6 @@ fun Ride.toEntity() = RideEntity(
     notes = notes,
     tags = tags.joinToString(","),
     moodRating = moodRating,
-    vehicleType = vehicleType.name
+    vehicleType = vehicleType.name,
+    steps = steps
 )
