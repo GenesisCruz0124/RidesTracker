@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.lifecycle.viewModelScope
 import com.ridestracker.data.repository.MaintenanceRepository
 import com.ridestracker.domain.model.FuelEntry
 import com.ridestracker.ui.theme.OrangeAccent
+import com.ridestracker.ui.theme.TextSecondary
 import com.ridestracker.util.FormatUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -96,17 +98,28 @@ fun FuelLogScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(entries) { entry ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(FormatUtil.formatDate(entry.date), style = MaterialTheme.typography.titleSmall)
-                                Text("%.0f km odometer".format(entry.odometerKm), style = MaterialTheme.typography.bodySmall)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("%.1f L".format(entry.liters), color = OrangeAccent, style = MaterialTheme.typography.titleSmall)
-                                Text("₱%.0f".format(entry.costTotal), style = MaterialTheme.typography.bodySmall)
+            if (entries.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.LocalGasStation, null, modifier = Modifier.size(80.dp), tint = TextSecondary)
+                        Spacer(Modifier.height(16.dp))
+                        Text("No fill-ups logged yet", style = MaterialTheme.typography.titleLarge, color = TextSecondary)
+                        Text("Tap + to log your first fill-up", color = TextSecondary)
+                    }
+                }
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(entries) { entry ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(FormatUtil.formatDate(entry.date), style = MaterialTheme.typography.titleSmall)
+                                    Text("%.0f km odometer".format(entry.odometerKm), style = MaterialTheme.typography.bodySmall)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("%.1f L".format(entry.liters), color = OrangeAccent, style = MaterialTheme.typography.titleSmall)
+                                    Text("₱%.0f".format(entry.costTotal), style = MaterialTheme.typography.bodySmall)
+                                }
                             }
                         }
                     }

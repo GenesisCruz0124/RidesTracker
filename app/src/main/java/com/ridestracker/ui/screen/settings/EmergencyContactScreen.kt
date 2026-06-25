@@ -10,6 +10,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ridestracker.ui.theme.OrangeAccent
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +22,8 @@ fun EmergencyContactScreen(
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var initialized by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     if (!initialized && (contact.name.isNotEmpty() || contact.phoneNumber.isNotEmpty())) {
         name = contact.name
@@ -34,7 +37,8 @@ fun EmergencyContactScreen(
                 title = { Text("Emergency Contact") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
@@ -61,7 +65,10 @@ fun EmergencyContactScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Button(
-                onClick = { viewModel.save(name.trim(), phoneNumber.trim()) },
+                onClick = {
+                    viewModel.save(name.trim(), phoneNumber.trim())
+                    coroutineScope.launch { snackbarHostState.showSnackbar("Emergency contact saved") }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
                 enabled = phoneNumber.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()

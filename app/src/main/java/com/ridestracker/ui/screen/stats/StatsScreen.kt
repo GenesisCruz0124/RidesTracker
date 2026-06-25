@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import com.ridestracker.data.repository.LifetimeStats
 import com.ridestracker.data.repository.RideRepository
 import com.ridestracker.ui.component.StatCard
 import com.ridestracker.ui.theme.OrangeAccent
+import com.ridestracker.ui.theme.TextSecondary
 import com.ridestracker.util.FormatUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,17 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         Text("Your Stats", style = MaterialTheme.typography.headlineMedium)
 
         stats?.let { s ->
+            if (s.totalRides == 0) {
+                Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Insights, null, modifier = Modifier.size(80.dp), tint = TextSecondary)
+                        Spacer(Modifier.height(16.dp))
+                        Text("No stats yet", style = MaterialTheme.typography.titleLarge, color = TextSecondary)
+                        Text("Complete a ride to see your stats here", color = TextSecondary)
+                    }
+                }
+                return@let
+            }
             Card {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("All Time", style = MaterialTheme.typography.titleMedium)
